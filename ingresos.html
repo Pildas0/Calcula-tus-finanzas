@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiPresupuesto · El huerto del mes</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Bricolage Grotesque"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            body: ['Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --ink: #1E3A2B;          /* verde botella */
+      --ink-soft: #5B7565;
+      --paper: #FBFEF6;
+      --mint: #E6F0DA;         /* fondo pistacho */
+      --mint-deep: #CFE3BC;
+      --meadow: #4F9A4B;       /* ingresos */
+      --leaf: #79B96A;
+      --tomato: #E4553C;       /* gastos */
+      --tomato-soft: #FCE3DB;
+      --sky: #6F82D8;          /* tarjeta */
+      --sky-soft: #E3E8FB;
+      --butter: #F7D154;       /* ahorro */
+      --butter-soft: #FDF1C4;
+      --line: #D3E2C2;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Figtree', sans-serif;
+      color: var(--ink);
+      background-color: var(--mint);
+      background-image:
+        radial-gradient(circle at 12% 8%, rgba(247,209,84,.35), transparent 38%),
+        radial-gradient(circle at 92% 30%, rgba(111,130,216,.18), transparent 40%),
+        radial-gradient(rgba(30,58,43,.10) 1.2px, transparent 1.2px);
+      background-size: auto, auto, 22px 22px;
+      background-attachment: fixed;
+    }
+    .font-display { font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em; }
+    .num { font-variant-numeric: tabular-nums; font-family: 'Bricolage Grotesque', sans-serif; }
+
+    /* ---------- Superficies ---------- */
+    .plot {
+      background: var(--paper);
+      border: 1.5px solid var(--line);
+      border-radius: 28px;
+      box-shadow: 0 18px 36px -26px rgba(30,58,43,.45);
+    }
+    .plot-head { border-bottom: 1.5px dashed var(--line); }
+
+    /* ---------- Formularios ---------- */
+    .field {
+      background: #fff;
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: .6rem .9rem;
+      font-size: .92rem;
+      color: var(--ink);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field::placeholder { color: #93A99A; }
+    .field:focus { outline: none; border-color: var(--meadow); box-shadow: 0 0 0 4px rgba(79,154,75,.18); }
+    .field.exp:focus { border-color: var(--tomato); box-shadow: 0 0 0 4px rgba(228,85,60,.15); }
+    .field.sky:focus { border-color: var(--sky); box-shadow: 0 0 0 4px rgba(111,130,216,.2); }
+
+    .row-item {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+      background: #F4F9EC;
+      border: 1.5px solid var(--line);
+      border-radius: 18px;
+      padding: .6rem;
+    }
+    .row-item.exp { background: #FEF4F0; border-color: #F6D5CB; }
+
+    .icon-btn {
+      padding: .5rem; border-radius: 12px; color: #86998D; transition: background .2s, color .2s;
+    }
+    .icon-btn:hover { background: var(--tomato-soft); color: var(--tomato); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      font-weight: 700; font-size: .85rem;
+      border-radius: 999px; padding: .6rem 1.1rem;
+      transition: transform .15s, box-shadow .2s, background .2s;
+    }
+    .btn:active { transform: translateY(1px) scale(.99); }
+    .btn:focus-visible, .field:focus-visible, .choice input:focus-visible + span { outline: 3px solid var(--sky); outline-offset: 2px; }
+    .btn-primary { background: var(--ink); color: var(--butter); box-shadow: 0 10px 20px -10px rgba(30,58,43,.7); }
+    .btn-primary:hover { background: #29503B; }
+    .btn-leaf { background: var(--meadow); color: #fff; box-shadow: 0 10px 20px -12px rgba(79,154,75,.9); }
+    .btn-leaf:hover { background: #438640; }
+    .btn-soft { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+    .btn-soft:hover { background: var(--mint); }
+    .btn-tomato-soft { background: var(--tomato-soft); color: #B23A25; border: 1.5px solid #F6C6B9; }
+    .btn-tomato-soft:hover { background: #F9D3C7; }
+    .btn-green-soft { background: #E3F1D6; color: #2F6F2C; border: 1.5px solid #C4DFAF; }
+    .btn-green-soft:hover { background: #D5EAC4; }
+
+    /* Selector tipo píldora (beneficios sociales) */
+    .choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .choice span {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .55rem 1rem; border-radius: 999px;
+      background: #fff; border: 1.5px solid #C9D2F3; color: #4A5AA8;
+      font-weight: 600; font-size: .88rem; cursor: pointer; transition: all .2s;
+    }
+    .choice input:checked + span { background: var(--sky); color: #fff; border-color: var(--sky); box-shadow: 0 8px 16px -10px rgba(111,130,216,.9); }
+
+    /* ---------- Libro de cuentas ---------- */
+    .ledger { display: flex; align-items: baseline; gap: .5rem; padding: .35rem 0; font-size: .95rem; }
+    .ledger .dots { flex: 1; border-bottom: 2px dotted #B9CDA6; transform: translateY(-4px); }
+    .ledger b { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ledger.total { border-top: 1.5px solid var(--line); margin-top: .35rem; padding-top: .7rem; font-weight: 700; }
+    .ledger.total b { font-size: 1.15rem; }
+    .neg { color: var(--tomato) !important; }
+
+    /* ---------- Ahorro ---------- */
+    .savings {
+      background:
+        radial-gradient(circle at 85% 0%, rgba(247,209,84,.22), transparent 45%),
+        linear-gradient(160deg, #234634 0%, #1B3527 100%);
+      color: #EAF5DC;
+      border-radius: 36px;
+      box-shadow: 0 30px 50px -30px rgba(20,45,32,.9);
+    }
+    .proj {
+      background: rgba(255,255,255,.07);
+      border: 1.5px solid rgba(255,255,255,.14);
+      border-radius: 20px;
+      padding: .9rem;
+      text-align: center;
+    }
+    .proj.big { background: var(--butter); border-color: var(--butter); color: var(--ink); }
+    .proj.big small { color: #6A5510; }
+
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 99px; background: rgba(255,255,255,.18); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--butter); border: 4px solid #1B3527; box-shadow: 0 0 0 2px var(--butter); cursor: pointer; }
+    input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--butter); border: 4px solid #1B3527; box-shadow: 0 0 0 2px var(--butter); cursor: pointer; }
+
+    #plant { transform-origin: 110px 190px; transition: transform .7s cubic-bezier(.2,.9,.3,1.2), filter .4s; }
+    .coin { transform-box: fill-box; transform-origin: center; transition: transform .5s cubic-bezier(.2,.9,.3,1.4), opacity .3s; }
+
+    /* ---------- Movimiento (una sola secuencia: amanece el huerto) ---------- */
+    @keyframes rise { from { transform: translateY(46px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .sun { animation: rise 1.4s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes sway { 0%,100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+    .sway { transform-box: fill-box; transform-origin: bottom center; animation: sway 5s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .sun, .sway { animation: none; }
+      #plant, .coin { transition: none; }
+      html { scroll-behavior: auto; }
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 30px);
+      opacity: 0; pointer-events: none; z-index: 100;
+      background: var(--ink); color: #EAF5DC; padding: .75rem 1.2rem; border-radius: 999px;
+      font-weight: 600; font-size: .88rem; box-shadow: 0 16px 30px -12px rgba(0,0,0,.5);
+      transition: all .35s cubic-bezier(.2,.9,.3,1.2);
+    }
+    #toast.show { transform: translate(-50%, 0); opacity: 1; }
+    #toast.error { background: #B23A25; color: #fff; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- BARRA DE NAVEGACIÓN -->
+  <header class="sticky top-3 z-50 px-3">
+    <div class="max-w-6xl mx-auto bg-[#FBFEF6]/80 backdrop-blur-md border border-[var(--line)] rounded-full pl-3 pr-3 py-2 flex items-center justify-between shadow-[0_12px_28px_-20px_rgba(30,58,43,.6)]">
+      <div class="flex items-center gap-2.5">
+        <!-- Logo: moneda con brote -->
+        <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="#F7D154" stroke="#1E3A2B" stroke-width="2"/>
+          <circle cx="20" cy="20" r="13" fill="none" stroke="#E0B933" stroke-width="1.5" stroke-dasharray="2 3"/>
+          <path d="M20 29 V17" stroke="#1E3A2B" stroke-width="2.4" stroke-linecap="round"/>
+          <path d="M20 19 C20 13 14 12 12 13 C12 18 15 20 20 19Z" fill="#4F9A4B" stroke="#1E3A2B" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M20 17 C20 12 26 10 28 11 C28 16 25 18 20 17Z" fill="#79B96A" stroke="#1E3A2B" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+        <span class="font-display font-extrabold text-xl">MiPresupuesto</span>
+      </div>
+
+      <div id="auth-header-info" class="hidden">
+        <div class="flex items-center gap-2">
+          <span id="user-email-display" class="hidden sm:inline-block text-xs font-semibold text-[var(--ink-soft)] bg-white border border-[var(--line)] px-3 py-1.5 rounded-full max-w-[220px] truncate"></span>
+          <button id="logout-btn" onclick="handleLogout()" class="btn btn-tomato-soft !py-1.5 !text-xs">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main class="flex-grow flex px-4 py-6 md:py-10">
+
+    <!-- SECCIÓN: AUTENTICACIÓN -->
+    <div id="auth-section" class="w-full max-w-4xl m-auto plot !rounded-[40px] overflow-hidden grid md:grid-cols-2">
+
+      <!-- Ilustración -->
+      <div class="relative min-h-[260px] md:min-h-[520px] overflow-hidden" style="background: linear-gradient(180deg,#FDF1C4 0%,#F6E9A8 45%,#DCEBC4 100%);">
+        <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 520" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <g class="sun">
+            <circle cx="290" cy="150" r="70" fill="#F7D154" opacity=".45"/>
+            <circle cx="290" cy="150" r="46" fill="#F7D154"/>
+          </g>
+          <path d="M0 330 C90 280 170 300 250 320 C320 338 370 320 400 300 V520 H0Z" fill="#B6D79A"/>
+          <path d="M0 380 C80 340 180 370 260 390 C330 405 380 390 400 380 V520 H0Z" fill="#8CC17B"/>
+          <path d="M0 440 C100 410 200 445 300 440 C350 438 380 430 400 425 V520 H0Z" fill="#4F9A4B"/>
+          <!-- brotes -->
+          <g class="sway" style="animation-delay:-1s">
+            <path d="M70 470 V420" stroke="#1E3A2B" stroke-width="4" stroke-linecap="round"/>
+            <path d="M70 430 C70 405 46 400 40 404 C42 428 55 436 70 430Z" fill="#79B96A" stroke="#1E3A2B" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M70 420 C70 396 94 388 102 392 C100 416 86 424 70 420Z" fill="#4F9A4B" stroke="#1E3A2B" stroke-width="3" stroke-linejoin="round"/>
+          </g>
+          <g class="sway" style="animation-delay:-3s">
+            <path d="M330 480 V410" stroke="#1E3A2B" stroke-width="4" stroke-linecap="round"/>
+            <path d="M330 424 C330 396 304 390 296 394 C298 420 312 430 330 424Z" fill="#79B96A" stroke="#1E3A2B" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M330 412 C330 384 358 376 366 380 C364 406 348 416 330 412Z" fill="#4F9A4B" stroke="#1E3A2B" stroke-width="3" stroke-linejoin="round"/>
+            <circle cx="330" cy="398" r="11" fill="#F7D154" stroke="#1E3A2B" stroke-width="3"/>
+          </g>
+        </svg>
+        <div class="relative z-10 p-7 md:p-9">
+          <h2 class="font-display font-extrabold text-3xl md:text-4xl leading-[1.05] max-w-[12ch]">Cada mes, una cosecha nueva.</h2>
+          <p class="mt-3 text-sm md:text-base text-[var(--ink)]/75 max-w-[26ch]">Anota lo que entra, lo que sale y mira cuánto te queda para sembrar.</p>
+        </div>
+      </div>
+
+      <!-- Formulario -->
+      <div class="p-7 md:p-10 flex flex-col justify-center">
+        <div class="mb-6">
+          <h2 id="auth-title" class="font-display font-extrabold text-3xl mb-1.5">Iniciar sesión</h2>
+          <p id="auth-subtitle" class="text-[var(--ink-soft)] text-sm">Ingresa a tu cuenta para gestionar tus finanzas</p>
+        </div>
+
+        <!-- MENSAJE DE ALERTA -->
+        <div id="auth-alert" class="hidden mb-4 p-3 rounded-2xl text-xs font-semibold"></div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+          <div>
+            <label for="auth-email" class="block text-xs font-bold text-[var(--ink)] mb-1.5">Correo electrónico</label>
+            <div class="relative">
+              <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86998D]"></i>
+              <input type="email" id="auth-email" required class="field sky w-full !pl-10" placeholder="usuario@correo.com">
+            </div>
+          </div>
+
+          <div>
+            <label for="auth-password" class="block text-xs font-bold text-[var(--ink)] mb-1.5">Contraseña</label>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86998D]"></i>
+              <input type="password" id="auth-password" required minlength="6" class="field sky w-full !pl-10" placeholder="Mínimo 6 caracteres">
+            </div>
+          </div>
+
+          <button type="submit" id="auth-submit-btn" class="btn btn-primary w-full justify-center !py-3 !text-sm">
+            <span>Ingresar</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </form>
+
+        <div class="mt-6 text-center text-sm text-[var(--ink-soft)]">
+          <span id="auth-toggle-text">¿No tienes cuenta?</span>
+          <button type="button" onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-[var(--sky)] hover:text-[#4F63C4] font-bold ml-1 underline underline-offset-4">Regístrate aquí</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SECCIÓN: PANEL PRINCIPAL -->
+    <div id="dashboard-section" class="hidden w-full max-w-5xl mx-auto space-y-6">
+
+      <!-- HERO -->
+      <section class="relative overflow-hidden rounded-[40px] border-[1.5px] border-[var(--line)]" style="background: linear-gradient(180deg,#FDF1C4 0%,#F3EDB4 55%,#DCEBC4 100%);">
+        <svg class="absolute inset-0 w-full h-full" viewBox="0 0 1000 260" preserveAspectRatio="none" aria-hidden="true">
+          <g class="sun">
+            <circle cx="820" cy="120" r="82" fill="#F7D154" opacity=".4"/>
+            <circle cx="820" cy="120" r="54" fill="#F7D154"/>
+          </g>
+          <path d="M0 200 C160 150 300 190 460 205 C640 222 820 170 1000 190 V260 H0Z" fill="#B6D79A"/>
+          <path d="M0 232 C200 200 340 236 520 238 C720 240 860 214 1000 224 V260 H0Z" fill="#8CC17B"/>
+        </svg>
+        <div class="relative z-10 px-6 py-8 md:px-10 md:py-11">
+          <h1 class="font-display font-extrabold text-4xl md:text-5xl leading-[1.02] max-w-[14ch]">El huerto de este mes</h1>
+          <p class="mt-3 text-sm md:text-base text-[var(--ink)]/75 max-w-[38ch]">Cuenta lo que entra, lo que sale y descubre cuánto puedes dejar crecer.</p>
+          
+        </div>
+      </section>
+
+      <!-- HISTORIAL -->
+      <div class="plot !rounded-[24px] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[var(--butter-soft)] text-[#8A6D0B]">
+            <i data-lucide="history" class="w-4.5 h-4.5 w-[18px] h-[18px]"></i>
+          </span>
+          <label for="saved-budgets-select" class="text-sm font-bold">Cálculos guardados</label>
+          <select id="saved-budgets-select" onchange="selectBudgetFromHistory()" class="field !py-1.5 !text-xs max-w-[230px]">
+            <option value="">Cargar guardados...</option>
+          </select>
+        </div>
+
+        <button onclick="createNewBudget()" class="btn btn-leaf">
+          <i data-lucide="sprout" class="w-4 h-4"></i> Empezar un cálculo nuevo
+        </button>
+      </div>
+
+      <!-- BENEFICIOS SOCIALES -->
+      <div class="plot !rounded-[24px] p-5 md:p-6" style="background: linear-gradient(135deg, #F1F4FF 0%, var(--paper) 60%);">
+        <div class="flex items-start gap-4">
+          <div class="p-3 bg-[var(--sky-soft)] text-[var(--sky)] rounded-2xl">
+            <i data-lucide="credit-card" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="font-display font-bold text-xl mb-0.5">Beneficios sociales del gobierno</h3>
+            <p class="text-sm text-[var(--ink-soft)] mb-4">¿Recibes beneficios sociales por medio de tarjeta social o similar?</p>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <label class="choice relative">
+                <input type="radio" name="social_benefits" value="si" onchange="toggleSocialBenefits(true)">
+                <span>Sí, recibo tarjeta social</span>
+              </label>
+              <label class="choice relative">
+                <input type="radio" name="social_benefits" value="no" checked onchange="toggleSocialBenefits(false)">
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INGRESOS -->
+      <div class="plot p-5 md:p-7 space-y-4">
+        <div class="plot-head flex flex-wrap items-center justify-between gap-3 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[#E3F1D6] text-[var(--meadow)]">
+              <i data-lucide="trending-up" class="w-5 h-5"></i>
+            </span>
+            <div>
+              <h3 class="font-display font-bold text-xl leading-tight">Lo que entra</h3>
+              <p class="text-xs text-[var(--ink-soft)]">Registra cada ingreso con su nombre, monto y método de cobro</p>
+            </div>
+          </div>
+          <button onclick="addIncomeRow()" class="btn btn-green-soft">
+            <i data-lucide="plus" class="w-4 h-4"></i> Agregar ingreso
+          </button>
+        </div>
+
+        <div id="income-list" class="space-y-2.5">
+          <!-- Las filas de ingresos se insertan dinámicamente -->
+        </div>
+      </div>
+
+
+      <!-- EGRESOS -->
+      <div class="plot p-5 md:p-7 space-y-4">
+        <div class="plot-head flex flex-wrap items-center justify-between gap-3 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[var(--tomato-soft)] text-[var(--tomato)]">
+              <i data-lucide="trending-down" class="w-5 h-5"></i>
+            </span>
+            <div>
+              <h3 class="font-display font-bold text-xl leading-tight">Lo que sale</h3>
+              <p class="text-xs text-[var(--ink-soft)]">Selecciona si el gasto se paga en efectivo o tarjeta</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="loadDefaultTemplate()" class="btn btn-soft">
+              <i data-lucide="file-text" class="w-4 h-4"></i> Cargar plantilla
+            </button>
+            <button onclick="addExpenseRow()" class="btn btn-tomato-soft">
+              <i data-lucide="plus" class="w-4 h-4"></i> Agregar gasto
+            </button>
+          </div>
+        </div>
+
+        <div id="expense-list" class="space-y-2.5">
+          <!-- Las filas de egresos se insertan dinámicamente -->
+        </div>
+      </div>
+
+
+      <!-- GUARDAR -->
+      <div class="flex items-center justify-end">
+        <button onclick="saveBudgetData()" class="btn btn-primary !py-3 !px-6 !text-sm">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          <span>Guardar este cálculo</span>
+        </button>
+      </div>
+
+
+      <!-- RESUMEN (libro de cuentas) -->
+      <div class="plot p-5 md:p-8">
+        <h3 class="font-display font-bold text-2xl flex items-center gap-2.5 mb-6">
+          <i data-lucide="notebook-pen" class="w-6 h-6 text-[var(--meadow)]"></i>
+          Cuentas del mes
+        </h3>
+
+        <div class="grid md:grid-cols-5 gap-6 md:gap-8">
+          <!-- Libro -->
+          <div class="md:col-span-3 space-y-6">
+            <div>
+              <h4 class="font-display font-bold text-base text-[var(--meadow)] mb-1.5">Ingresos</h4>
+              <div class="ledger"><span>En efectivo</span><i class="dots"></i><b id="res-inc-cash">€0.00</b></div>
+              <div class="ledger"><span>En tarjeta o cuenta</span><i class="dots"></i><b id="res-inc-card">€0.00</b></div>
+              <div class="ledger total"><span>Total que entra</span><i class="dots"></i><b id="res-inc-total" class="text-[var(--meadow)]">€0.00</b></div>
+            </div>
+
+            <div>
+              <h4 class="font-display font-bold text-base text-[var(--tomato)] mb-1.5">Gastos</h4>
+              <div class="ledger"><span>En efectivo</span><i class="dots"></i><b id="res-exp-cash">€0.00</b></div>
+              <div class="ledger"><span>En tarjeta o cuenta</span><i class="dots"></i><b id="res-exp-card">€0.00</b></div>
+              <div class="ledger total"><span>Total que sale</span><i class="dots"></i><b id="res-exp-total" class="text-[var(--tomato)]">€0.00</b></div>
+            </div>
+          </div>
+
+          <!-- Lo que queda -->
+          <div class="md:col-span-2 rounded-[28px] p-6 flex flex-col justify-between" style="background: linear-gradient(160deg,#FDF1C4,#F7E28E);">
+            <div>
+              <span class="text-sm font-bold text-[#7A6208]">Dinero total libre estimado</span>
+              <div class="mt-1"><span id="res-free-total" class="num text-5xl font-extrabold text-[var(--ink)] break-all">€0.00</span></div>
+            </div>
+            <div class="mt-6 space-y-1 text-sm">
+              <div class="flex justify-between border-t border-[#1E3A2B]/15 pt-2.5">
+                <span class="font-semibold">Efectivo restante</span>
+                <b id="res-rem-cash" class="num">€0.00</b>
+              </div>
+              <div class="flex justify-between pt-1">
+                <span class="font-semibold">Tarjeta restante</span>
+                <b id="res-rem-card" class="num">€0.00</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- PLANIFICADOR DE AHORRO -->
+      <div id="savings-plan-card" class="savings p-6 md:p-9">
+        <div class="grid md:grid-cols-5 gap-6 md:gap-8 items-center">
+
+          <!-- Planta que crece -->
+          <div class="md:col-span-2 flex flex-col items-center">
+            <svg viewBox="0 0 220 240" class="w-full max-w-[250px]" role="img" aria-label="Planta que crece según tu ahorro">
+              <ellipse cx="110" cy="226" rx="70" ry="8" fill="#000" opacity=".22"/>
+              <g id="plant">
+                <path d="M110 192 C104 150 118 116 110 74" fill="none" stroke="#8CC17B" stroke-width="7" stroke-linecap="round"/>
+                <path d="M110 150 C80 150 62 128 62 108 C90 106 108 124 110 150Z" fill="#79B96A" stroke="#1B3527" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M112 122 C142 122 162 100 160 80 C132 78 114 98 112 122Z" fill="#8CC17B" stroke="#1B3527" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M110 84 C92 80 84 62 90 48 C106 50 114 66 110 84Z" fill="#A5D48F" stroke="#1B3527" stroke-width="3" stroke-linejoin="round"/>
+                <g class="coin" id="coin-1"><circle cx="110" cy="64" r="15" fill="#F7D154" stroke="#1B3527" stroke-width="3"/><text x="110" y="70" font-size="16" font-weight="800" text-anchor="middle" fill="#1B3527" font-family="Bricolage Grotesque, sans-serif">€</text></g>
+                <g class="coin" id="coin-2"><circle cx="70" cy="100" r="13" fill="#F7D154" stroke="#1B3527" stroke-width="3"/><text x="70" y="105" font-size="14" font-weight="800" text-anchor="middle" fill="#1B3527" font-family="Bricolage Grotesque, sans-serif">€</text></g>
+                <g class="coin" id="coin-3"><circle cx="152" cy="74" r="13" fill="#F7D154" stroke="#1B3527" stroke-width="3"/><text x="152" y="79" font-size="14" font-weight="800" text-anchor="middle" fill="#1B3527" font-family="Bricolage Grotesque, sans-serif">€</text></g>
+              </g>
+              <!-- Maceta -->
+              <path d="M70 190 H150 L142 226 Q141 232 134 232 H86 Q79 232 78 226Z" fill="#F08A6B" stroke="#1B3527" stroke-width="3" stroke-linejoin="round"/>
+              <rect x="64" y="182" width="92" height="14" rx="7" fill="#F5A283" stroke="#1B3527" stroke-width="3"/>
+            </svg>
+            <p id="plant-caption" class="text-sm text-[#BFD8B0] text-center -mt-1">Tu planta crece con lo que decides ahorrar.</p>
+          </div>
+
+          <!-- Controles y proyecciones -->
+          <div class="md:col-span-3 space-y-5">
+            <div>
+              <h3 class="font-display font-bold text-2xl flex items-center gap-2.5">
+                <i data-lucide="piggy-bank" class="w-6 h-6 text-[var(--butter)]"></i>
+                Cuánto puedes ahorrar
+              </h3>
+              <p class="text-sm text-[#BFD8B0] mt-1">Elige qué parte del sobrante mensual quieres guardar.</p>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <input type="range" id="savings-range" min="5" max="100" value="50" aria-label="Porcentaje del sobrante a ahorrar" oninput="document.getElementById('savings-percent-input').value = this.value; calculateSavingsProjections()">
+              <div class="flex items-center gap-1 shrink-0">
+                <input type="number" id="savings-percent-input" value="50" min="5" max="100" oninput="calculateSavingsProjections()" aria-label="Porcentaje del sobrante a ahorrar" class="w-[68px] bg-white/10 border-[1.5px] border-white/25 rounded-xl px-2 py-1.5 text-center num font-bold text-[var(--butter)] focus:outline-none focus:border-[var(--butter)]">
+                <span class="font-bold text-[var(--butter)]">%</span>
+              </div>
+            </div>
+
+            <div id="savings-recommendation-content" class="space-y-4">
+              <div class="bg-white/8 border border-white/15 p-4 rounded-2xl text-sm leading-relaxed" style="background: rgba(255,255,255,.07);">
+                Si guardas <span id="rec-savings-rate-text" class="font-bold text-[var(--butter)]">50%</span> de tu sobrante (<span id="rec-monthly-amount" class="font-bold text-[var(--butter)]">€0.00</span> al mes), vas formando una reserva de emergencia sin apretar tu día a día.
+              </div>
+
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="proj">
+                  <small class="text-xs font-semibold text-[#BFD8B0] block mb-1">En 3 meses</small>
+                  <span id="proj-3m" class="num text-lg font-extrabold text-[var(--butter)]">€0.00</span>
+                </div>
+                <div class="proj">
+                  <small class="text-xs font-semibold text-[#BFD8B0] block mb-1">En 6 meses</small>
+                  <span id="proj-6m" class="num text-lg font-extrabold text-[var(--butter)]">€0.00</span>
+                </div>
+                <div class="proj">
+                  <small class="text-xs font-semibold text-[#BFD8B0] block mb-1">En 9 meses</small>
+                  <span id="proj-9m" class="num text-lg font-extrabold text-[var(--butter)]">€0.00</span>
+                </div>
+                <div class="proj big">
+                  <small class="text-xs font-bold block mb-1">En 1 año</small>
+                  <span id="proj-12m" class="num text-xl font-extrabold">€0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // CONFIGURACIÓN DE SUPABASE INTEGRADA
+    const SUPABASE_URL = "https://tnbztpjqghajcyvhtlsk.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuYnp0cGpxZ2hhamN5dmh0bHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MDQ5NDgsImV4cCI6MjEwNjE4MDk0OH0.PD9Xp-n6GUgrDanrOI9VKRzrAz-qzjGgzxZG3QYq9SM";
+
+    let supabaseClient = null;
+    let currentUser = null;
+    let isSignUpMode = false;
+    let hasSocialBenefits = false;
+    let userSavedBudgets = [];
+    let currentFreeMoney = 0;
+
+    // PLANTILLA PREDETERMINADA CON CLASIFICACIÓN DE TIPO DE PAGO
+    const DEFAULT_EXPENSES = [
+      { name: "Comida", type: "efectivo" },
+      { name: "Transporte", type: "tarjeta" },
+      { name: "Gimnasio", type: "tarjeta" },
+      { name: "Detergentes", type: "efectivo" },
+      { name: "Pampers y wipes", type: "efectivo" },
+      { name: "Leche", type: "efectivo" },
+      { name: "Marvin", type: "tarjeta" },
+      { name: "Gutschein de kita", type: "tarjeta" },
+      { name: "Otto", type: "tarjeta" },
+      { name: "Klarna", type: "tarjeta" }
+    ];
+
+    // UTILIDADES
+    function esc(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    let toastTimer = null;
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.className = (isError ? 'error ' : '') + 'show';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3200);
+    }
+
+    // INICIALIZACIÓN
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        checkSession();
+      }
+    });
+
+    // COMPROBAR SESIÓN
+    async function checkSession() {
+      if (!supabaseClient) return;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        showDashboard();
+      } else {
+        showAuth();
+      }
+    }
+
+    // ALTERNAR MODOS DE AUTENTICACIÓN
+    function toggleAuthMode() {
+      isSignUpMode = !isSignUpMode;
+      document.getElementById('auth-title').innerText = isSignUpMode ? 'Crear cuenta' : 'Iniciar sesión';
+      document.getElementById('auth-subtitle').innerText = isSignUpMode ? 'Registra tu acceso para guardar tus presupuestos' : 'Ingresa a tu cuenta para gestionar tus finanzas';
+      document.getElementById('auth-submit-btn').querySelector('span').innerText = isSignUpMode ? 'Registrarme' : 'Ingresar';
+      document.getElementById('auth-toggle-text').innerText = isSignUpMode ? '¿Ya tienes una cuenta?' : '¿No tienes cuenta?';
+      document.getElementById('auth-toggle-btn').innerText = isSignUpMode ? 'Inicia sesión aquí' : 'Regístrate aquí';
+    }
+
+    function showAuthAlert(msg, ok) {
+      const alertBox = document.getElementById('auth-alert');
+      alertBox.innerText = msg;
+      alertBox.className = "mb-4 p-3 rounded-2xl text-xs font-semibold border " +
+        (ok ? "bg-[#E3F1D6] text-[#2F6F2C] border-[#C4DFAF]" : "bg-[#FCE3DB] text-[#B23A25] border-[#F6C6B9]");
+    }
+
+    // MANEJAR SUBMIT DE LOGIN/REGISTRO
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+      document.getElementById('auth-alert').classList.add('hidden');
+
+      if (!supabaseClient) {
+        showAuthAlert("Error: Cliente de Supabase no configurado.", false);
+        return;
+      }
+
+      try {
+        let result;
+        if (isSignUpMode) {
+          result = await supabaseClient.auth.signUp({ email, password });
+        } else {
+          result = await supabaseClient.auth.signInWithPassword({ email, password });
+        }
+
+        if (result.error) throw result.error;
+
+        if (isSignUpMode && !result.data.session) {
+          showAuthAlert("Registro exitoso. Revisa tu correo de confirmación o inicia sesión.", true);
+        } else if (result.data.session) {
+          currentUser = result.data.session.user;
+          showDashboard();
+        }
+      } catch (err) {
+        showAuthAlert(err.message || "Error al autenticar usuario", false);
+      }
+    }
+
+    // CERRAR SESIÓN
+    async function handleLogout() {
+      if (supabaseClient) await supabaseClient.auth.signOut();
+      currentUser = null;
+      showAuth();
+    }
+
+    // VISTAS
+    function showAuth() {
+      document.getElementById('auth-section').classList.remove('hidden');
+      document.getElementById('dashboard-section').classList.add('hidden');
+      document.getElementById('auth-header-info').classList.add('hidden');
+    }
+
+    function showDashboard() {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('dashboard-section').classList.remove('hidden');
+      document.getElementById('auth-header-info').classList.remove('hidden');
+      document.getElementById('user-email-display').innerText = currentUser.email;
+
+      loadUserData();
+    }
+
+    // CREAR NUEVO CÁLCULO DESDE CERO
+    function createNewBudget() {
+      hasSocialBenefits = false;
+      const radioBtn = document.querySelector('input[name="social_benefits"][value="no"]');
+      if (radioBtn) radioBtn.checked = true;
+
+      document.getElementById('income-list').innerHTML = '';
+      addIncomeRow();
+
+      loadDefaultTemplate();
+      toggleSocialBenefits(false);
+      document.getElementById('saved-budgets-select').value = "";
+    }
+
+    // ALTERNAR BENEFICIOS SOCIALES
+    function toggleSocialBenefits(val) {
+      hasSocialBenefits = val;
+      const typeSelects = document.querySelectorAll('.income-type-select');
+      typeSelects.forEach(select => {
+        if (hasSocialBenefits) {
+          select.classList.remove('hidden');
+        } else {
+          select.classList.add('hidden');
+        }
+      });
+      calculateTotals();
+    }
+
+    // GESTIÓN DE INGRESOS
+    function addIncomeRow(name = '', amount = '', type = 'tarjeta') {
+      const container = document.getElementById('income-list');
+      const rowId = 'inc-' + Date.now() + Math.random().toString(36).substr(2, 4);
+
+      const row = document.createElement('div');
+      row.className = "income-row row-item";
+      row.id = rowId;
+
+      row.innerHTML = `
+        <input type="text" placeholder="Concepto (Ej: Sueldo, Ayuda)" value="${esc(name)}" oninput="calculateTotals()" class="inc-name field flex-1 min-w-[150px]">
+        <input type="number" step="0.01" placeholder="Monto (€)" value="${esc(amount)}" oninput="calculateTotals()" class="inc-amount field w-32">
+        <select onchange="calculateTotals()" class="inc-type income-type-select field ${hasSocialBenefits ? '' : 'hidden'}">
+          <option value="tarjeta" ${type === 'tarjeta' ? 'selected' : ''}>💳 Tarjeta / Cuenta</option>
+          <option value="efectivo" ${type === 'efectivo' ? 'selected' : ''}>💵 Efectivo</option>
+        </select>
+        <button onclick="removeRow('${rowId}')" class="icon-btn" aria-label="Quitar ingreso">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      container.appendChild(row);
+      lucide.createIcons();
+      calculateTotals();
+    }
+
+    // GESTIÓN DE EGRESOS
+    function addExpenseRow(name = '', amount = '', type = 'tarjeta') {
+      const container = document.getElementById('expense-list');
+      const rowId = 'exp-' + Date.now() + Math.random().toString(36).substr(2, 4);
+
+      const row = document.createElement('div');
+      row.className = "expense-row row-item exp";
+      row.id = rowId;
+
+      row.innerHTML = `
+        <input type="text" placeholder="Nombre del gasto" value="${esc(name)}" oninput="calculateTotals()" class="exp-name field exp flex-1 min-w-[150px]">
+        <input type="number" step="0.01" placeholder="Monto (€)" value="${esc(amount)}" oninput="calculateTotals()" class="exp-amount field exp w-32">
+        <select onchange="calculateTotals()" class="exp-type field exp">
+          <option value="tarjeta" ${type === 'tarjeta' ? 'selected' : ''}>💳 Tarjeta / Cuenta</option>
+          <option value="efectivo" ${type === 'efectivo' ? 'selected' : ''}>💵 Efectivo</option>
+        </select>
+        <button onclick="removeRow('${rowId}')" class="icon-btn" aria-label="Quitar gasto">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      container.appendChild(row);
+      lucide.createIcons();
+      calculateTotals();
+    }
+
+    function removeRow(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.remove();
+        calculateTotals();
+      }
+    }
+
+    function loadDefaultTemplate() {
+      const container = document.getElementById('expense-list');
+      container.innerHTML = '';
+      DEFAULT_EXPENSES.forEach(exp => addExpenseRow(exp.name, '', exp.type));
+    }
+
+    // CÁLCULOS EN TIEMPO REAL
+    function calculateTotals() {
+      let cashIncome = 0;
+      let cardIncome = 0;
+
+      // Sumar Ingresos
+      document.querySelectorAll('.income-row').forEach(row => {
+        const amt = parseFloat(row.querySelector('.inc-amount').value) || 0;
+        const type = row.querySelector('.inc-type').value;
+
+        if (hasSocialBenefits) {
+          if (type === 'efectivo') cashIncome += amt;
+          else cardIncome += amt;
+        } else {
+          cardIncome += amt;
+        }
+      });
+
+      const totalIncome = cashIncome + cardIncome;
+
+      // Sumar Egresos
+      let cashExpense = 0;
+      let cardExpense = 0;
+
+      document.querySelectorAll('.expense-row').forEach(row => {
+        const amt = parseFloat(row.querySelector('.exp-amount').value) || 0;
+        const type = row.querySelector('.exp-type').value;
+
+        if (type === 'efectivo') {
+          cashExpense += amt;
+        } else {
+          cardExpense += amt;
+        }
+      });
+
+      const totalExpense = cashExpense + cardExpense;
+
+      // Restas y Balances
+      const remainingCash = cashIncome - cashExpense;
+      const remainingCard = cardIncome - cardExpense;
+      currentFreeMoney = totalIncome - totalExpense;
+
+      // Actualizar UI
+      document.getElementById('res-inc-cash').innerText = `€${cashIncome.toFixed(2)}`;
+      document.getElementById('res-inc-card').innerText = `€${cardIncome.toFixed(2)}`;
+      document.getElementById('res-inc-total').innerText = `€${totalIncome.toFixed(2)}`;
+
+      document.getElementById('res-exp-cash').innerText = `€${cashExpense.toFixed(2)}`;
+      document.getElementById('res-exp-card').innerText = `€${cardExpense.toFixed(2)}`;
+      document.getElementById('res-exp-total').innerText = `€${totalExpense.toFixed(2)}`;
+
+      const remCashEl = document.getElementById('res-rem-cash');
+      remCashEl.innerText = `€${remainingCash.toFixed(2)}`;
+      remCashEl.classList.toggle('neg', remainingCash < 0);
+
+      const remCardEl = document.getElementById('res-rem-card');
+      remCardEl.innerText = `€${remainingCard.toFixed(2)}`;
+      remCardEl.classList.toggle('neg', remainingCard < 0);
+
+      const freeEl = document.getElementById('res-free-total');
+      freeEl.innerText = `€${currentFreeMoney.toFixed(2)}`;
+      freeEl.classList.toggle('neg', currentFreeMoney < 0);
+
+      calculateSavingsProjections();
+    }
+
+    // CÁLCULO DE PROYECCIÓN DE AHORROS
+    function calculateSavingsProjections() {
+      const pctInput = document.getElementById('savings-percent-input');
+      let pct = parseFloat(pctInput.value) || 0;
+      if (pct > 100) pct = 100;
+      if (pct < 0) pct = 0;
+
+      const rangeEl = document.getElementById('savings-range');
+      if (rangeEl) rangeEl.value = pct;
+
+      const monthlySavings = currentFreeMoney > 0 ? (currentFreeMoney * (pct / 100)) : 0;
+
+      document.getElementById('rec-savings-rate-text').innerText = `${pct}%`;
+      document.getElementById('rec-monthly-amount').innerText = `€${monthlySavings.toFixed(2)}`;
+
+      document.getElementById('proj-3m').innerText = `€${(monthlySavings * 3).toFixed(2)}`;
+      document.getElementById('proj-6m').innerText = `€${(monthlySavings * 6).toFixed(2)}`;
+      document.getElementById('proj-9m').innerText = `€${(monthlySavings * 9).toFixed(2)}`;
+      document.getElementById('proj-12m').innerText = `€${(monthlySavings * 12).toFixed(2)}`;
+
+      updatePlant(pct);
+    }
+
+    // LA PLANTA CRECE SEGÚN LO QUE AHORRAS
+    function updatePlant(pct) {
+      const plant = document.getElementById('plant');
+      const caption = document.getElementById('plant-caption');
+      if (!plant) return;
+
+      const hasSurplus = currentFreeMoney > 0;
+      const scale = hasSurplus ? 0.6 + 0.4 * (pct / 100) : 0.45;
+      plant.style.transform = `scale(${scale})`;
+      plant.style.filter = hasSurplus ? 'none' : 'grayscale(.8) brightness(.85)';
+
+      const show = (id, on) => {
+        const c = document.getElementById(id);
+        c.style.opacity = on ? 1 : 0;
+        c.style.transform = on ? 'scale(1)' : 'scale(.2)';
+      };
+      show('coin-1', hasSurplus);
+      show('coin-2', hasSurplus && pct >= 35);
+      show('coin-3', hasSurplus && pct >= 70);
+
+      caption.innerText = hasSurplus
+        ? (pct >= 70 ? 'Tu planta está cargada de monedas.' : pct >= 35 ? 'Va creciendo con buen ritmo.' : 'Un brote pequeño, pero ya está en marcha.')
+        : 'Este mes no queda sobrante para regar la planta.';
+    }
+
+    // GUARDAR EN SUPABASE
+    async function saveBudgetData() {
+      if (!currentUser || !supabaseClient) return;
+
+      const incomes = [];
+      document.querySelectorAll('.income-row').forEach(row => {
+        incomes.push({
+          name: row.querySelector('.inc-name').value,
+          amount: parseFloat(row.querySelector('.inc-amount').value) || 0,
+          type: row.querySelector('.inc-type').value
+        });
+      });
+
+      const expenses = [];
+      document.querySelectorAll('.expense-row').forEach(row => {
+        expenses.push({
+          name: row.querySelector('.exp-name').value,
+          amount: parseFloat(row.querySelector('.exp-amount').value) || 0,
+          type: row.querySelector('.exp-type').value
+        });
+      });
+
+      try {
+        const payload = {
+          user_id: currentUser.id,
+          has_social_benefits: hasSocialBenefits,
+          incomes: incomes,
+          expenses: expenses,
+          created_at: new Date().toISOString()
+        };
+
+        const { error } = await supabaseClient.from('monthly_budgets').insert([payload]);
+        if (error) throw error;
+
+        showToast("¡Cálculo guardado! 🌱");
+        loadUserData(); // Recargar la lista de guardados
+      } catch (err) {
+        showToast("No se pudo guardar: " + err.message, true);
+      }
+    }
+
+    // CARGAR DATOS DEL USUARIO Y LLENAR SELECTOR DE HISTORIAL
+    async function loadUserData() {
+      if (!currentUser || !supabaseClient) return;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('monthly_budgets')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        userSavedBudgets = data || [];
+        populateBudgetsSelect();
+
+        if (userSavedBudgets.length > 0) {
+          displayBudgetObject(userSavedBudgets[0]);
+        } else {
+          createNewBudget();
+        }
+      } catch (err) {
+        console.error("Error al obtener lista de presupuestos:", err.message);
+      }
+    }
+
+    function populateBudgetsSelect() {
+      const select = document.getElementById('saved-budgets-select');
+      select.innerHTML = '<option value="">Cargar guardados...</option>';
+
+      userSavedBudgets.forEach((b, index) => {
+        const dateStr = new Date(b.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+        const option = document.createElement('option');
+        option.value = b.id;
+        option.innerText = `Cálculo #${userSavedBudgets.length - index} (${dateStr})`;
+        select.appendChild(option);
+      });
+    }
+
+    function selectBudgetFromHistory() {
+      const select = document.getElementById('saved-budgets-select');
+      const selectedId = select.value;
+      if (!selectedId) return;
+
+      const found = userSavedBudgets.find(b => b.id === selectedId);
+      if (found) {
+        displayBudgetObject(found);
+      }
+    }
+
+    function displayBudgetObject(budget) {
+      hasSocialBenefits = budget.has_social_benefits || false;
+
+      const radioBtn = document.querySelector(`input[name="social_benefits"][value="${hasSocialBenefits ? 'si' : 'no'}"]`);
+      if (radioBtn) radioBtn.checked = true;
+
+      // Cargar ingresos
+      const incContainer = document.getElementById('income-list');
+      incContainer.innerHTML = '';
+      if (budget.incomes && budget.incomes.length > 0) {
+        budget.incomes.forEach(inc => addIncomeRow(inc.name, inc.amount, inc.type));
+      } else {
+        addIncomeRow();
+      }
+
+      // Cargar egresos
+      const expContainer = document.getElementById('expense-list');
+      expContainer.innerHTML = '';
+      if (budget.expenses && budget.expenses.length > 0) {
+        budget.expenses.forEach(exp => addExpenseRow(exp.name, exp.amount, exp.type));
+      } else {
+        loadDefaultTemplate();
+      }
+
+      toggleSocialBenefits(hasSocialBenefits);
+      document.getElementById('saved-budgets-select').value = budget.id;
+    }
+  </script>
+</body>
+</html>
